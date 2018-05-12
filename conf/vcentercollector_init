@@ -1,0 +1,24 @@
+#!/bin/sh
+#/etc/init.d/vcentercollector
+
+APPDIR=/opt/vcentercollector
+PID=/var/run/vcentercollector.pid
+
+case "$1" in
+   start)
+     echo "Starting vcentercollector"
+	   export PWD=$APPDIR
+     start-stop-daemon --start --quiet --make-pidfile --pidfile $PID --chdir $APPDIR --background --exec ./vcentercollector -- -config $APPDIR/conf/vcentercollector.toml -logs $APPDIR/log
+     ;;
+   stop)
+     echo "Stopping vcentercollector"
+     start-stop-daemon --stop --pidfile $PID
+	 rm -f $PID
+     ;;
+   *)
+     echo "Usage: /etc/init.d/vcentercollector{start|stop}"
+     exit 1
+     ;;
+esac
+
+exit 0

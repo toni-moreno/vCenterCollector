@@ -1,0 +1,17 @@
+RESIST_USER=resist
+
+RESIST_GROUP=resist
+
+RESIST_HOME=/usr/share/vcentercollector
+
+LOG_DIR=/var/log/vcentercollector
+
+DATA_DIR=/var/lib/vcentercollector
+
+MAX_OPEN_FILES=10000
+
+CONF_DIR=/etc/vcentercollector
+
+CONF_FILE=/etc/vcentercollector/vcentercollector.toml
+
+RESTART_ON_UPGRADE=false

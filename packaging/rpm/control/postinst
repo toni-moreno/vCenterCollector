@@ -1,0 +1,75 @@
+#!/bin/sh
+
+set -e
+
+[ -f /etc/sysconfig/vcentercollector ] && . /etc/sysconfig/vcentercollector
+
+startvcentercollector() {
+  if [ -x /bin/systemctl ] ; then
+		/bin/systemctl start vcentercollector.service
+	elif [ -x /etc/init.d/vcentercollector ] ; then
+		/etc/init.d/vcentercollector start
+	elif [ -x /etc/rc.d/init.d/vcentercollector ] ; then
+		/etc/rc.d/init.d/vcentercollector start
+	fi
+}
+
+stopvcentercollector() {
+	if [ -x /bin/systemctl ] ; then
+		/bin/systemctl stop vcentercollector.service > /dev/null 2>&1 || :
+	elif [ -x /etc/init.d/vcentercollector ] ; then
+		/etc/init.d/vcentercollector stop
+	elif [ -x /etc/rc.d/init.d/vcentercollector ] ; then
+		/etc/rc.d/init.d/vcentercollector stop
+	fi
+}
+
+# Initial installation: $1 == 1
+# Upgrade: $1 == 2, and configured to restart on upgrade
+if [ $1 -eq 1 ] ; then
+	[ -z "$RESIST_USER" ] && RESIST_USER="resist"
+	[ -z "$RESIST_GROUP" ] && RESIST_GROUP="resist"
+	if ! getent group "$RESIST_GROUP" > /dev/null 2>&1 ; then
+    groupadd -r "$RESIST_GROUP"
+	fi
+	if ! getent passwd "$RESIST_USER" > /dev/null 2>&1 ; then
+    useradd -r -g $RESIST_USER -d /usr/share/vcentercollector -s /sbin/nologin \
+    -c "vcentercollector user" $RESIST_USER
+	fi
+
+ 	# Set user permissions on /var/log/vcentercollector, /var/lib/vcentercollector
+	mkdir -p /var/log/vcentercollector /var/lib/vcentercollector
+	chown -R $RESIST_USER:$RESIST_GROUP /var/log/vcentercollector /var/lib/vcentercollector
+	chmod 755 /var/log/vcentercollector /var/lib/vcentercollector
+
+	# configuration files should not be modifiable by vcentercollector user, as this can be a security issue
+	chown -Rh root:$RESIST_GROUP /etc/vcentercollector/*
+	chmod 755 /etc/vcentercollector
+	find /etc/vcentercollector -type f -exec chmod 640 {} ';'
+	find /etc/vcentercollector -type d -exec chmod 755 {} ';'
+
+  if [ -x /bin/systemctl ] ; then
+    echo "### NOT starting on installation, please execute the following statements to configure vcentercollector to start automatically using systemd"
+    echo " sudo /bin/systemctl daemon-reload"
+    echo " sudo /bin/systemctl enable vcentercollector.service"
+    echo "### You can start vcentercollector by executing"
+    echo " sudo /bin/systemctl start vcentercollector.service"
+  elif [ -x /sbin/chkconfig ] ; then
+    echo "### NOT starting vcentercollector by default on bootup, please execute"
+    echo " sudo /sbin/chkconfig --add vcentercollector"
+    echo "### In order to start vcentercollector, execute"
+    echo " sudo service vcentercollector start"
+  fi
+elif [ $1 -ge 2 ] ; then
+  if [ -x /opt/vcentercollector/ ]; then
+    echo "### Upgrading Notice ### "
+    echo "-- New vcentercollector install home is /usr/share/vcentercollector"
+    #echo "-- Please move sqlite3 database to /var/lib/vcentercollector/"
+    echo "-- Notice: service name && binary changed to vcentercollector"
+  fi
+
+  if [ "$RESTART_ON_UPGRADE" == "true" ]; then
+    stopvcentercollector
+    startvcentercollector
+  fi
+fi
